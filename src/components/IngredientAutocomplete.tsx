@@ -214,29 +214,49 @@ export function IngredientAutocomplete({
             <li className="autocomplete-status">No encontramos ese producto</li>
           )}
           {suggestions.map((suggestion, index) => (
-            <li key={suggestion.productId ?? `${suggestion.name}-${index}`}>
+            <li
+              key={
+                suggestion.personalIngredientId ??
+                suggestion.productId ??
+                `${suggestion.name}-${index}`
+              }
+            >
               <button
                 type="button"
                 role="option"
                 aria-selected={index === activeIndex}
-                className={index === activeIndex ? 'active' : undefined}
+                className={[
+                  index === activeIndex ? 'active' : '',
+                  suggestion.isPersonal ? 'personal' : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ') || undefined}
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => pickSuggestion(suggestion)}
               >
                 <strong>{suggestion.name}</strong>
                 <span>
-                  {[
-                    suggestion.brand,
-                    suggestion.presentacion,
-                    suggestion.priceMin
-                      ? `desde ${formatPrice(suggestion.priceMin)}`
-                      : null,
-                    suggestion.storeCount
-                      ? `${suggestion.storeCount} super${suggestion.storeCount === 1 ? '' : 's'}`
-                      : null,
-                  ]
-                    .filter(Boolean)
-                    .join(' · ') || 'Producto de supermercado'}
+                  {suggestion.isPersonal
+                    ? [
+                        suggestion.brand,
+                        `$${(suggestion.manualUnitPrice ?? 0).toLocaleString('es-AR', {
+                          maximumFractionDigits: 2,
+                        })} / ${suggestion.suggestedUnit ?? 'u'}`,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')
+                    : [
+                        suggestion.brand,
+                        suggestion.presentacion,
+                        suggestion.priceMin
+                          ? `desde ${formatPrice(suggestion.priceMin)}`
+                          : null,
+                        suggestion.storeCount
+                          ? `${suggestion.storeCount} super${suggestion.storeCount === 1 ? '' : 's'}`
+                          : null,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ') || 'Producto de supermercado'}
                 </span>
               </button>
             </li>

@@ -1,5 +1,5 @@
 import type { CostBreakdown, ProductPrice, RecipeIngredient } from '../types'
-import { convertQuantity, pricePerBaseUnit, unitsAreCompatible } from './unitConverter'
+import { pricePerRecipeUnit, unitsAreCompatible } from './unitConverter'
 
 type CalculatedIngredient = Omit<RecipeIngredient, 'status' | 'errorMessage' | 'ean'> & {
   ean?: string
@@ -61,9 +61,9 @@ export function calculateIngredientCostSafe(
     }
   }
 
-  const unitPrices = compatiblePrices.map((price) =>
-    pricePerBaseUnit(price.price, price.quantity, price.unit),
-  )
+  const unitPrices = compatiblePrices
+    .map((price) => pricePerRecipeUnit(price.price, price.quantity, price.unit, unit))
+    .filter((value): value is number => value !== null && value > 0)
 
   const averageUnitPrice = average(unitPrices)
   if (averageUnitPrice <= 0) {
@@ -73,9 +73,7 @@ export function calculateIngredientCostSafe(
     }
   }
 
-  const convertedQuantity =
-    convertQuantity(quantity, unit, compatiblePrices[0]?.unit ?? unit) ?? quantity
-  const lineCost = averageUnitPrice * convertedQuantity
+  const lineCost = averageUnitPrice * quantity
   const priceInUserUnit = quantity > 0 ? lineCost / quantity : 0
 
   if (lineCost <= 0) {

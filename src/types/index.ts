@@ -46,6 +46,14 @@ export interface SavedRecipe {
   updatedAt: string
 }
 
+export interface PersonalIngredient {
+  id: string
+  name: string
+  unit: string
+  manualUnitPrice: number
+  updatedAt: string
+}
+
 export interface CostBreakdown {
   ingredients: RecipeIngredient[]
   totalCost: number

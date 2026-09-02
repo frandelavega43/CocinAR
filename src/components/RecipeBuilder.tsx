@@ -15,6 +15,12 @@ interface RecipeBuilderProps {
     manualTotalPrice?: number,
   ) => void
   onNameCommit: (id: string, name: string, suggestedUnit?: string, searchQuery?: string) => void
+  onPersonalIngredientApply: (
+    id: string,
+    name: string,
+    unit: string,
+    manualUnitPrice: number,
+  ) => void
   onQuantityChange: (id: string, quantity: number) => void
   onUnitChange: (id: string, unit: string) => void
   onRemove: (id: string) => void
@@ -23,9 +29,11 @@ interface RecipeBuilderProps {
 function IngredientNameField({
   ingredient,
   onCommit,
+  onPersonalApply,
 }: {
   ingredient: RecipeIngredient
   onCommit: (name: string, suggestedUnit?: string, searchQuery?: string) => void
+  onPersonalApply: (name: string, unit: string, manualUnitPrice: number) => void
 }) {
   const draftRef = useRef(ingredient.name)
   const {
@@ -76,6 +84,14 @@ function IngredientNameField({
       }}
       onSelect={(suggestion, searchQuery) => {
         draftRef.current = suggestion.name
+        if (suggestion.isPersonal && suggestion.manualUnitPrice !== undefined) {
+          onPersonalApply(
+            suggestion.name,
+            suggestion.suggestedUnit ?? ingredient.unit,
+            suggestion.manualUnitPrice,
+          )
+          return
+        }
         onCommit(suggestion.name, suggestion.suggestedUnit, searchQuery || undefined)
       }}
       onBlur={() => {
@@ -104,12 +120,14 @@ export function RecipeBuilder({
   ingredients,
   onAdd,
   onNameCommit,
+  onPersonalIngredientApply,
   onQuantityChange,
   onUnitChange,
   onRemove,
 }: RecipeBuilderProps) {
   const [ingredientNameSeed, setIngredientNameSeed] = useState('')
   const ingredientNameDraftRef = useRef('')
+  const selectedPersonalUnitPriceRef = useRef<number | undefined>(undefined)
   const [ingredientSearchQuery, setIngredientSearchQuery] = useState<string | undefined>()
   const [quantity, setQuantity] = useState('')
   const [unit, setUnit] = useState(DEFAULT_UNIT)
@@ -126,6 +144,7 @@ export function RecipeBuilder({
 
   function resetAddForm() {
     ingredientNameDraftRef.current = ''
+    selectedPersonalUnitPriceRef.current = undefined
     setIngredientNameSeed('')
     setIngredientSearchQuery(undefined)
     setManualIngredientNameExternal('')
@@ -139,6 +158,11 @@ export function RecipeBuilder({
     ingredientNameDraftRef.current = suggestion.name
     setIngredientNameSeed(suggestion.name)
     setIngredientSearchQuery(searchQuery.trim() || undefined)
+    if (suggestion.isPersonal && suggestion.manualUnitPrice !== undefined) {
+      selectedPersonalUnitPriceRef.current = suggestion.manualUnitPrice
+    } else {
+      selectedPersonalUnitPriceRef.current = undefined
+    }
     if (suggestion.suggestedUnit) {
       setUnit(suggestion.suggestedUnit)
     }
@@ -172,6 +196,18 @@ export function RecipeBuilder({
       return
     }
 
+    if (selectedPersonalUnitPriceRef.current !== undefined) {
+      onAdd(
+        name,
+        parsedQuantity,
+        unit,
+        undefined,
+        selectedPersonalUnitPriceRef.current * parsedQuantity,
+      )
+      resetAddForm()
+      return
+    }
+
     onAdd(name, parsedQuantity, unit, ingredientSearchQuery)
     resetAddForm()
   }
@@ -187,20 +223,33 @@ export function RecipeBuilder({
         </p>
       </div>
 
-      <div className="add-ingredient-section">
-        <label className="manual-ingredient-toggle">
-          <input
-            type="checkbox"
-            checked={isManualMode}
-            onChange={(event) => {
-              setIsManualMode(event.target.checked)
+      <div className={`add-ingredient-section${isManualMode ? ' add-ingredient-section--manual' : ''}`}>
+        <div className="ingredient-mode-switch" role="group" aria-label="Modo de precio">
+          <button
+            type="button"
+            className={`ingredient-mode-switch__option${!isManualMode ? ' ingredient-mode-switch__option--active' : ''}`}
+            onClick={() => {
+              setIsManualMode(false)
               setIngredientSearchQuery(undefined)
               setManualTotalPrice('')
               setFormError(null)
             }}
-          />
-          <span>Precio manual</span>
-        </label>
+          >
+            Supermercado
+          </button>
+          <button
+            type="button"
+            className={`ingredient-mode-switch__option${isManualMode ? ' ingredient-mode-switch__option--active' : ''}`}
+            onClick={() => {
+              setIsManualMode(true)
+              setIngredientSearchQuery(undefined)
+              setManualTotalPrice('')
+              setFormError(null)
+            }}
+          >
+            Precio manual
+          </button>
+        </div>
 
         <form
           className={`add-ingredient-form${isManualMode ? ' add-ingredient-form--manual' : ''}`}
@@ -210,6 +259,7 @@ export function RecipeBuilder({
             <span>Ingrediente</span>
             {isManualMode ? (
               <input
+                className="recipe-form-input"
                 value={manualIngredientName}
                 onChange={(event) => setManualIngredientName(event.target.value, event.target)}
                 onFocus={handleManualNameFocus}
@@ -222,6 +272,7 @@ export function RecipeBuilder({
                 value={ingredientNameSeed}
                 onChange={(next) => {
                   ingredientNameDraftRef.current = next
+                  selectedPersonalUnitPriceRef.current = undefined
                 }}
                 onSelect={handleSuggestionSelect}
                 placeholder="Ej: harina, huevos, manteca..."
@@ -283,6 +334,9 @@ export function RecipeBuilder({
                     ingredient={ingredient}
                     onCommit={(name, suggestedUnit, searchQuery) =>
                       onNameCommit(ingredient.id, name, suggestedUnit, searchQuery)
+                    }
+                    onPersonalApply={(name, unit, manualUnitPrice) =>
+                      onPersonalIngredientApply(ingredient.id, name, unit, manualUnitPrice)
                     }
                   />
                   {ingredient.isManual && (

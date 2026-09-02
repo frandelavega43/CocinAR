@@ -79,3 +79,14 @@ export function pricePerBaseUnit(price: number, packageQuantity: number, unit: s
   if (baseQuantity <= 0) return price
   return price / baseQuantity
 }
+
+export function pricePerRecipeUnit(
+  packagePrice: number,
+  packageQuantity: number,
+  packageUnit: string,
+  recipeUnit: string,
+): number | null {
+  const packageInRecipeUnit = convertQuantity(packageQuantity, packageUnit, recipeUnit)
+  if (packageInRecipeUnit === null || packageInRecipeUnit <= 0) return null
+  return packagePrice / packageInRecipeUnit
+}

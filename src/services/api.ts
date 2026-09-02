@@ -4,6 +4,10 @@ import { searchIngredientProducts, isCompoundIngredientQuery } from './ingredien
 import { searchMockProducts } from './mockData'
 import { parseProductPresentation } from './presentationParser'
 import { isPreciosClarosConfigured } from './preciosClaros/client'
+import {
+  mergeIngredientSuggestions,
+  searchPersonalIngredientSuggestions,
+} from './personalIngredientSearch'
 
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 
@@ -15,6 +19,9 @@ export interface IngredientSuggestion {
   priceMin?: number
   storeCount?: number
   suggestedUnit?: string
+  isPersonal?: boolean
+  personalIngredientId?: string
+  manualUnitPrice?: number
 }
 
 export function isUsingMockData(): boolean {
@@ -64,9 +71,11 @@ export async function searchIngredientSuggestions(
   const trimmed = query.trim()
   if (trimmed.length < 2) return []
 
+  const personal = searchPersonalIngredientSuggestions(trimmed, limit)
+
   if (isUsingMockData()) {
     await new Promise((resolve) => setTimeout(resolve, 150))
-    return searchMockProducts(trimmed).map((product) => ({
+    const mockResults = searchMockProducts(trimmed).map((product) => ({
       name: product.name,
       brand: product.brand,
       presentacion: `${product.quantity} ${product.unit}`,
@@ -74,18 +83,21 @@ export async function searchIngredientSuggestions(
       storeCount: 1,
       suggestedUnit: product.unit,
     }))
+    return mergeIngredientSuggestions(personal, mockResults, limit)
   }
 
   const suggestionLimit = Math.max(limit, isCompoundIngredientQuery(trimmed) ? 25 : 10)
   const { productos } = await searchIngredientProducts(trimmed, suggestionLimit, signal)
 
-  return productos.map((product) => ({
-      productId: product.id,
-      name: product.nombre,
-      brand: product.marca,
-      presentacion: product.presentacion,
-      priceMin: product.precioMin,
-      storeCount: product.cantSucursalesDisponible,
-      suggestedUnit: parseProductPresentation(product.presentacion, product.nombre).unit,
-    }))
+  const apiResults = productos.map((product) => ({
+    productId: product.id,
+    name: product.nombre,
+    brand: product.marca,
+    presentacion: product.presentacion,
+    priceMin: product.precioMin,
+    storeCount: product.cantSucursalesDisponible,
+    suggestedUnit: parseProductPresentation(product.presentacion, product.nombre).unit,
+  }))
+
+  return mergeIngredientSuggestions(personal, apiResults, suggestionLimit)
 }

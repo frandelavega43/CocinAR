@@ -89,7 +89,49 @@ export function SavedRecipesPanel({
         </button>
       </div>
 
-      <section className="recipe-backup-panel" aria-label="Respaldo de recetas">
+      {recipes.length === 0 ? (
+        <div className="my-recipes-empty">
+          <p className="empty-state">Todavía no guardaste ninguna receta.</p>
+        </div>
+      ) : (
+        <ul className="saved-recipes-list saved-recipes-list--page">
+          {recipes.map((recipe) => (
+            <li key={recipe.id} className={recipe.id === activeRecipeId ? 'active' : undefined}>
+              <button
+                type="button"
+                className="saved-recipe-card"
+                onClick={() => onLoad(recipe)}
+              >
+                <strong>{recipe.name}</strong>
+                <span>
+                  {recipe.ingredients.length} ingrediente
+                  {recipe.ingredients.length === 1 ? '' : 's'} · {recipe.servings} porciones
+                </span>
+                <span className="saved-recipe-date">Actualizada {formatDate(recipe.updatedAt)}</span>
+              </button>
+              <div className="saved-recipe-actions">
+                <button
+                  type="button"
+                  className="secondary-button saved-recipe-actions__button"
+                  onClick={() => onDuplicate(recipe.id)}
+                >
+                  Duplicar
+                </button>
+                <button
+                  type="button"
+                  className="delete-recipe-button"
+                  onClick={() => onDelete(recipe.id)}
+                  aria-label={`Eliminar ${recipe.name}`}
+                >
+                  Eliminar
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <section className="recipe-backup-panel recipe-backup-panel--footer" aria-label="Respaldo de recetas">
         <div>
           <h3>Respaldo</h3>
           <p>
@@ -132,48 +174,6 @@ export function SavedRecipesPanel({
         {backupMessage ? <p className="recipe-backup-status">{backupMessage}</p> : null}
         {backupError ? <p className="recipe-backup-status error">{backupError}</p> : null}
       </section>
-
-      {recipes.length === 0 ? (
-        <div className="my-recipes-empty">
-          <p className="empty-state">Todavía no guardaste ninguna receta.</p>
-        </div>
-      ) : (
-        <ul className="saved-recipes-list saved-recipes-list--page">
-          {recipes.map((recipe) => (
-            <li key={recipe.id} className={recipe.id === activeRecipeId ? 'active' : undefined}>
-              <button
-                type="button"
-                className="saved-recipe-card"
-                onClick={() => onLoad(recipe)}
-              >
-                <strong>{recipe.name}</strong>
-                <span>
-                  {recipe.ingredients.length} ingrediente
-                  {recipe.ingredients.length === 1 ? '' : 's'} · {recipe.servings} porciones
-                </span>
-                <span className="saved-recipe-date">Actualizada {formatDate(recipe.updatedAt)}</span>
-              </button>
-              <div className="saved-recipe-actions">
-                <button
-                  type="button"
-                  className="secondary-button saved-recipe-actions__button"
-                  onClick={() => onDuplicate(recipe.id)}
-                >
-                  Duplicar
-                </button>
-                <button
-                  type="button"
-                  className="delete-recipe-button"
-                  onClick={() => onDelete(recipe.id)}
-                  aria-label={`Eliminar ${recipe.name}`}
-                >
-                  Eliminar
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
     </section>
   )
 }

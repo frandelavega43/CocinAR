@@ -4,6 +4,7 @@ import { CostTotalBar } from './components/CostTotalBar'
 import { RecipeBuilder } from './components/RecipeBuilder'
 import { RecipeStepsEditor } from './components/RecipeStepsEditor'
 import { SavedRecipesPanel } from './components/SavedRecipesPanel'
+import { PersonalIngredientsPanel } from './components/PersonalIngredientsPanel'
 import { isUsingMockData } from './services/api'
 import { calculateIngredientCostSafe, calculateRecipeCost } from './services/costCalculator'
 import { countUniqueBrands } from './services/marketPrice'
@@ -30,8 +31,15 @@ import {
   setLastActiveRecipeId,
   toSavedIngredients,
 } from './services/recipeStorage'
+import {
+  deletePersonalIngredient,
+  getPersonalIngredients,
+  updatePersonalIngredient,
+  upsertPersonalIngredient,
+  upsertPersonalIngredientFromManual,
+} from './services/personalIngredientStorage'
 import { normalizeRecipeSteps, serializeRecipeSteps } from './services/recipeSteps'
-import type { RecipeIngredient, SavedRecipe } from './types'
+import type { PersonalIngredient, RecipeIngredient, SavedRecipe } from './types'
 import './index.css'
 
 function toSavedRecipe(
@@ -63,7 +71,7 @@ function toSavedRecipe(
   }
 }
 
-type AppView = 'editor' | 'recipes'
+type AppView = 'editor' | 'recipes' | 'ingredients'
 
 function App() {
   const [activeView, setActiveView] = useState<AppView>('editor')
@@ -73,6 +81,9 @@ function App() {
   const [ingredients, setIngredients] = useState<RecipeIngredient[]>([])
   const [servings, setServings] = useState(4)
   const [savedRecipes, setSavedRecipes] = useState<SavedRecipe[]>(() => getSavedRecipes())
+  const [personalIngredients, setPersonalIngredients] = useState<PersonalIngredient[]>(() =>
+    getPersonalIngredients(),
+  )
   const [autosaveStatus, setAutosaveStatus] = useState<'idle' | 'pending' | 'saved' | 'error'>(
     'idle',
   )
@@ -284,6 +295,9 @@ function App() {
         ...current,
         createManualIngredient(name, quantity, unit, manualTotalPrice, id),
       ])
+      setPersonalIngredients(
+        upsertPersonalIngredientFromManual(name, unit, manualTotalPrice, quantity),
+      )
       return
     }
 
@@ -396,11 +410,21 @@ function App() {
     if (!current || (current.name === name && current.searchQuery === searchQuery)) return
 
     if (current.isManual) {
+      const trimmed = name.trim()
       setIngredients((list) =>
         list.map((ingredient) =>
-          ingredient.id === id ? { ...ingredient, name: name.trim() } : ingredient,
+          ingredient.id === id ? { ...ingredient, name: trimmed } : ingredient,
         ),
       )
+      if (current.manualUnitPrice !== undefined) {
+        setPersonalIngredients(
+          upsertPersonalIngredient({
+            name: trimmed,
+            unit: current.unit,
+            manualUnitPrice: current.manualUnitPrice,
+          }),
+        )
+      }
       return
     }
 
@@ -433,6 +457,37 @@ function App() {
 
   function handleRemove(id: string) {
     setIngredients((current) => current.filter((ingredient) => ingredient.id !== id))
+  }
+
+  function handlePersonalIngredientApply(
+    id: string,
+    name: string,
+    unit: string,
+    manualUnitPrice: number,
+  ) {
+    const current = ingredients.find((ingredient) => ingredient.id === id)
+    if (!current) return
+
+    const totalPrice = manualUnitPrice * current.quantity
+    const updated = createManualIngredient(name, current.quantity, unit, totalPrice, id)
+    setIngredients((list) => list.map((ingredient) => (ingredient.id === id ? updated : ingredient)))
+  }
+
+  function handleAddPersonalIngredient(name: string, unit: string, manualUnitPrice: number) {
+    setPersonalIngredients(upsertPersonalIngredient({ name, unit, manualUnitPrice }))
+  }
+
+  function handleUpdatePersonalIngredient(
+    id: string,
+    name: string,
+    unit: string,
+    manualUnitPrice: number,
+  ) {
+    setPersonalIngredients(updatePersonalIngredient(id, { name, unit, manualUnitPrice }))
+  }
+
+  function handleDeletePersonalIngredient(id: string) {
+    setPersonalIngredients(deletePersonalIngredient(id))
   }
 
   function handleDeleteRecipe(id: string) {
@@ -547,6 +602,17 @@ function App() {
             <span className="app-tab__count">{savedRecipes.length}</span>
           ) : null}
         </button>
+        <button
+          type="button"
+          className={`app-tab${activeView === 'ingredients' ? ' app-tab--active' : ''}`}
+          onClick={() => setActiveView('ingredients')}
+          aria-current={activeView === 'ingredients' ? 'page' : undefined}
+        >
+          Mis ingredientes
+          {personalIngredients.length > 0 ? (
+            <span className="app-tab__count">{personalIngredients.length}</span>
+          ) : null}
+        </button>
       </nav>
 
       {activeView === 'editor' ? (
@@ -587,6 +653,7 @@ function App() {
           ingredients={ingredients}
           onAdd={handleAdd}
           onNameCommit={handleNameChange}
+          onPersonalIngredientApply={handlePersonalIngredientApply}
           onQuantityChange={handleQuantityChange}
           onUnitChange={handleUnitChange}
           onRemove={handleRemove}
@@ -604,7 +671,7 @@ function App() {
         hasIngredients={ingredients.length > 0}
       />
         </>
-      ) : (
+      ) : activeView === 'recipes' ? (
         <main className="layout layout-recipes">
           <SavedRecipesPanel
             recipes={savedRecipes}
@@ -618,6 +685,15 @@ function App() {
             }}
             onExportBackup={handleExportBackup}
             onImportBackup={handleImportBackup}
+          />
+        </main>
+      ) : (
+        <main className="layout layout-recipes">
+          <PersonalIngredientsPanel
+            ingredients={personalIngredients}
+            onAdd={handleAddPersonalIngredient}
+            onUpdate={handleUpdatePersonalIngredient}
+            onDelete={handleDeletePersonalIngredient}
           />
         </main>
       )}

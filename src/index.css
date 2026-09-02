@@ -188,6 +188,125 @@ textarea {
   min-height: 7.5rem;
 }
 
+.my-ingredients-page__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.personal-ingredient-form {
+  display: grid;
+  grid-template-columns: 1.4fr 0.8fr 0.8fr auto;
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
+
+.add-ingredient-form--personal {
+  grid-template-columns: 1.4fr 0.8fr 0.8fr auto;
+}
+
+.personal-ingredient-form label {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.personal-ingredient-form span {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.personal-ingredient-form button {
+  align-self: end;
+}
+
+.personal-ingredients-list {
+  list-style: none;
+  margin: 1.25rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.personal-ingredient-row {
+  grid-template-columns: 1fr auto;
+  align-items: start;
+}
+
+.personal-ingredient-row__main {
+  display: grid;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.personal-ingredient-row__fields {
+  display: grid;
+  grid-template-columns: 1.4fr 0.8fr 0.8fr;
+  gap: 0.65rem;
+}
+
+.personal-ingredient-row__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1rem;
+}
+
+.personal-ingredient-row__date {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.personal-ingredient-row__delete {
+  align-self: start;
+  min-height: 2.75rem;
+}
+
+.recipe-form-input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 0.85rem;
+  padding: 0.8rem 0.95rem;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.recipe-form-input--name {
+  font-weight: 700;
+}
+
+.add-ingredient-form input:not(.recipe-form-input),
+.add-ingredient-form .recipe-form-input,
+.add-ingredient-form .autocomplete input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 0.85rem;
+  padding: 0.8rem 0.95rem;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.add-ingredient-section:not(.add-ingredient-section--manual) .add-ingredient-form .autocomplete input,
+.add-ingredient-section:not(.add-ingredient-section--manual) .add-ingredient-form input:not(.recipe-form-input) {
+  background: var(--surface-muted);
+}
+
+.autocomplete-list button.personal {
+  background: #fff8f2;
+}
+
+.autocomplete-list button.personal:hover,
+.autocomplete-list button.personal.active {
+  background: #ffefe3;
+}
+
+.autocomplete-list button.personal strong::after {
+  content: ' · Propio';
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--accent-dark);
+}
+
 .recipe-title-bar {
   display: grid;
   gap: 1rem;
@@ -398,6 +517,48 @@ textarea {
   display: grid;
 }
 
+.ingredient-mode-switch {
+  display: inline-flex;
+  gap: 0.35rem;
+  justify-self: end;
+  margin-bottom: 0.85rem;
+  padding: 0.3rem;
+  border-radius: 0.9rem;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+}
+
+.ingredient-mode-switch__option {
+  border: none;
+  border-radius: 0.65rem;
+  padding: 0.55rem 0.9rem;
+  min-height: 2.35rem;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.ingredient-mode-switch__option:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.ingredient-mode-switch__option--active,
+.ingredient-mode-switch__option--active:hover {
+  background: var(--accent);
+  color: white;
+}
+
+.add-ingredient-section--manual .add-ingredient-form {
+  padding: 1rem;
+  border-radius: 1rem;
+  border: 1px dashed var(--border);
+  background: linear-gradient(180deg, #fffaf6 0%, var(--surface-muted) 100%);
+}
+
 .manual-ingredient-toggle {
   display: inline-flex;
   align-items: center;
@@ -524,6 +685,10 @@ textarea {
   border-radius: 1rem;
   border: 1px dashed var(--border);
   background: var(--surface-muted);
+}
+
+.recipe-backup-panel--footer {
+  margin-top: 1.5rem;
 }
 
 .recipe-backup-panel h3 {
@@ -846,7 +1011,10 @@ textarea {
 .search-field input,
 .servings-field input,
 .ingredient-controls input,
-.unit-select {
+.unit-select,
+.add-ingredient-form .unit-select,
+.personal-ingredient-row__fields .unit-select,
+.recipe-form-input {
   width: 100%;
   border: 1px solid var(--border);
   border-radius: 0.85rem;
@@ -1044,6 +1212,29 @@ textarea {
     margin-left: 0;
   }
 
+  .ingredient-mode-switch {
+    justify-self: stretch;
+    width: 100%;
+  }
+
+  .ingredient-mode-switch__option {
+    flex: 1;
+    padding-inline: 0.55rem;
+  }
+
+  .add-ingredient-section--manual .add-ingredient-form,
+  .add-ingredient-form--personal {
+    padding: 0.85rem;
+  }
+
+  .personal-ingredient-row {
+    grid-template-columns: 1fr;
+  }
+
+  .personal-ingredient-row__delete {
+    width: 100%;
+  }
+
   .add-ingredient-form button {
     width: 100%;
   }
@@ -1060,6 +1251,38 @@ textarea {
   .my-recipes-page__header {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .my-ingredients-page__header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .my-ingredients-page__header .primary-button {
+    width: 100%;
+  }
+
+  .my-ingredients-form {
+    margin-top: 0;
+  }
+
+  .personal-ingredient-form,
+  .add-ingredient-form--personal {
+    grid-template-columns: 1fr;
+  }
+
+  .personal-ingredient-form button,
+  .add-ingredient-form--personal button {
+    width: 100%;
+  }
+
+  .personal-ingredient-row__fields {
+    grid-template-columns: 1fr;
+  }
+
+  .personal-ingredient-row .delete-recipe-button,
+  .personal-ingredient-row__delete {
+    width: 100%;
   }
 
   .my-recipes-page__header .primary-button {
@@ -1260,7 +1483,8 @@ textarea {
   .recipe-servings-field input,
   .recipe-step-row textarea,
   .add-ingredient-form input,
-  .add-ingredient-form select {
+  .add-ingredient-form select,
+  .recipe-form-input {
     font-size: 16px;
   }
 
