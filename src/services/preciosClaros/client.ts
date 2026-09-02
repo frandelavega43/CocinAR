@@ -3,6 +3,7 @@ import type {
   PreciosClarosSearchResponse,
   PreciosClarosSucursalesResponse,
 } from './types'
+import { getCachedProductSearch, setCachedProductSearch } from './searchCache'
 
 const API_BASE =
   (import.meta.env.VITE_PRECIOS_CLAROS_URL as string | undefined)?.replace(/\/$/, '') ??
@@ -14,6 +15,8 @@ const MAX_SUCURSALES = 50
 
 const SUCURSALES_CACHE_KEY = 'cocinaar-precios-claros-sucursales'
 const SUCURSALES_TTL_MS = 24 * 60 * 60 * 1000
+
+let sucursalesPromise: Promise<string> | null = null
 
 interface CachedSucursales {
   ids: string
@@ -65,19 +68,53 @@ export async function getSucursalesIds(force = false): Promise<string> {
     if (cached) return cached.ids
   }
 
-  const query = new URLSearchParams({
-    lat: String(DEFAULT_LAT),
-    lng: String(DEFAULT_LNG),
-    limit: String(MAX_SUCURSALES),
-  })
+  if (!force && sucursalesPromise) {
+    return sucursalesPromise
+  }
 
-  const response = await apiGet<PreciosClarosSucursalesResponse>(
-    `/sucursales?${query.toString()}`,
-  )
+  sucursalesPromise = (async () => {
+    const query = new URLSearchParams({
+      lat: String(DEFAULT_LAT),
+      lng: String(DEFAULT_LNG),
+      limit: String(MAX_SUCURSALES),
+    })
 
-  const ids = response.sucursales.map((sucursal) => sucursal.id).join(',')
-  writeSucursalesCache(ids)
-  return ids
+    const response = await apiGet<PreciosClarosSucursalesResponse>(
+      `/sucursales?${query.toString()}`,
+    )
+
+    const ids = response.sucursales.map((sucursal) => sucursal.id).join(',')
+    writeSucursalesCache(ids)
+    return ids
+  })()
+
+  try {
+    return await sucursalesPromise
+  } finally {
+    sucursalesPromise = null
+  }
+}
+
+/** Precarga sucursales en idle para que la primera búsqueda no espere esto. */
+export function prefetchSucursales() {
+  if (typeof window === 'undefined') return
+  if (!isPreciosClarosConfigured()) return
+  if (readSucursalesCache()) return
+
+  const run = () => {
+    void getSucursalesIds().catch(() => {
+      // silencioso: se reintentará en la primera búsqueda
+    })
+  }
+
+  const idle = (window as Window & { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number })
+    .requestIdleCallback
+
+  if (typeof idle === 'function') {
+    idle(run, { timeout: 2000 })
+  } else {
+    window.setTimeout(run, 300)
+  }
 }
 
 export async function searchProductos(
@@ -91,6 +128,9 @@ export async function searchProductos(
     return { status: 200, productos: [], total: 0 }
   }
 
+  const cached = getCachedProductSearch(trimmed, limit, offset)
+  if (cached) return cached
+
   const sucursales = await getSucursalesIds()
   const params = new URLSearchParams({
     string: trimmed,
@@ -99,7 +139,16 @@ export async function searchProductos(
     limit: String(limit),
   })
 
-  return apiGet<PreciosClarosSearchResponse>(`/productos?${params.toString()}`, signal)
+  const data = await apiGet<PreciosClarosSearchResponse>(
+    `/productos?${params.toString()}`,
+    signal,
+  )
+
+  if (!signal?.aborted) {
+    setCachedProductSearch(trimmed, limit, offset, data)
+  }
+
+  return data
 }
 
 export async function getProductoByEan(ean: string): Promise<PreciosClarosProductoResponse> {

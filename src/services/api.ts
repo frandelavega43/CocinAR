@@ -11,6 +11,41 @@ import {
 
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 
+const SUGGESTION_CACHE_TTL_MS = 2 * 60 * 1000
+const suggestionCache = new Map<
+  string,
+  { results: IngredientSuggestion[]; fetchedAt: number }
+>()
+
+function getCachedSuggestions(query: string): IngredientSuggestion[] | null {
+  const cached = suggestionCache.get(query)
+  if (!cached) return null
+  if (Date.now() - cached.fetchedAt > SUGGESTION_CACHE_TTL_MS) {
+    suggestionCache.delete(query)
+    return null
+  }
+  return cached.results
+}
+
+function setCachedSuggestions(query: string, results: IngredientSuggestion[]) {
+  suggestionCache.set(query, { results, fetchedAt: Date.now() })
+  if (suggestionCache.size > 60) {
+    const oldest = [...suggestionCache.entries()].sort(
+      (left, right) => left[1].fetchedAt - right[1].fetchedAt,
+    )[0]
+    if (oldest) suggestionCache.delete(oldest[0])
+  }
+}
+
+export function peekIngredientSuggestions(
+  query: string,
+  limit = 18,
+): IngredientSuggestion[] | null {
+  const trimmed = query.trim()
+  if (trimmed.length < 2) return null
+  return getCachedSuggestions(`${trimmed.toLowerCase()}|${limit}`)
+}
+
 export interface IngredientSuggestion {
   name: string
   brand?: string
@@ -65,16 +100,19 @@ export async function fetchPricesByIngredients(
 
 export async function searchIngredientSuggestions(
   query: string,
-  limit = 10,
+  limit = 18,
   signal?: AbortSignal,
 ): Promise<IngredientSuggestion[]> {
   const trimmed = query.trim()
   if (trimmed.length < 2) return []
 
+  const cacheKey = `${trimmed.toLowerCase()}|${limit}`
+  const cached = getCachedSuggestions(cacheKey)
+  if (cached) return cached
+
   const personal = searchPersonalIngredientSuggestions(trimmed, limit)
 
   if (isUsingMockData()) {
-    await new Promise((resolve) => setTimeout(resolve, 150))
     const mockResults = searchMockProducts(trimmed).map((product) => ({
       name: product.name,
       brand: product.brand,
@@ -83,11 +121,20 @@ export async function searchIngredientSuggestions(
       storeCount: 1,
       suggestedUnit: product.unit,
     }))
-    return mergeIngredientSuggestions(personal, mockResults, limit)
+    const merged = mergeIngredientSuggestions(personal, mockResults, limit)
+    setCachedSuggestions(cacheKey, merged)
+    return merged
   }
 
-  const suggestionLimit = Math.max(limit, isCompoundIngredientQuery(trimmed) ? 25 : 10)
-  const { productos } = await searchIngredientProducts(trimmed, suggestionLimit, signal)
+  const suggestionLimit = Math.max(limit, isCompoundIngredientQuery(trimmed) ? 24 : 18)
+  const { productos } = await searchIngredientProducts(
+    trimmed,
+    suggestionLimit,
+    signal,
+    'suggest',
+  )
+
+  if (signal?.aborted) return personal
 
   const apiResults = productos.map((product) => ({
     productId: product.id,
@@ -99,5 +146,7 @@ export async function searchIngredientSuggestions(
     suggestedUnit: parseProductPresentation(product.presentacion, product.nombre).unit,
   }))
 
-  return mergeIngredientSuggestions(personal, apiResults, suggestionLimit)
+  const merged = mergeIngredientSuggestions(personal, apiResults, limit)
+  setCachedSuggestions(cacheKey, merged)
+  return merged
 }

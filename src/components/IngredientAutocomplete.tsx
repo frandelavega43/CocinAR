@@ -1,10 +1,15 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import { searchIngredientSuggestions } from '../services/api'
+import {
+  peekIngredientSuggestions,
+  searchIngredientSuggestions,
+} from '../services/api'
 import type { IngredientSuggestion } from '../services/api'
+import { searchPersonalIngredientSuggestions } from '../services/personalIngredientSearch'
 import { formatPrice } from '../services/presentationParser'
 
 const MIN_CHARS = 2
-const DEBOUNCE_MS = 220
+const DEBOUNCE_MS = 120
+const RESULT_LIMIT = 18
 
 interface IngredientAutocompleteProps {
   value: string
@@ -73,14 +78,38 @@ export function IngredientAutocomplete({
 
     const controller = new AbortController()
     const currentRequest = ++requestIdRef.current
+    const cached = peekIngredientSuggestions(trimmed, RESULT_LIMIT)
+    const personal = searchPersonalIngredientSuggestions(trimmed, RESULT_LIMIT)
 
     setOpen(true)
-    setLoading(true)
-    setHasSearched(false)
+    setActiveIndex(-1)
 
+    if (cached && cached.length > 0) {
+      setSuggestions(cached)
+      setLoading(false)
+      setHasSearched(true)
+    } else {
+      // Mantener resultados previos mientras carga; si no hay, mostrar personales.
+      setSuggestions((current) => {
+        if (personal.length > 0) {
+          const names = new Set(personal.map((item) => item.name.toLowerCase()))
+          const rest = current.filter((item) => !names.has(item.name.toLowerCase()))
+          return [...personal, ...rest].slice(0, RESULT_LIMIT)
+        }
+        return current
+      })
+      setLoading(true)
+      setHasSearched(personal.length > 0)
+    }
+
+    const delay = cached ? 0 : DEBOUNCE_MS
     const timeout = window.setTimeout(async () => {
       try {
-        const results = await searchIngredientSuggestions(trimmed, 10, controller.signal)
+        const results = await searchIngredientSuggestions(
+          trimmed,
+          RESULT_LIMIT,
+          controller.signal,
+        )
 
         if (currentRequest !== requestIdRef.current) return
 
@@ -92,14 +121,13 @@ export function IngredientAutocomplete({
         if (controller.signal.aborted) return
         if (currentRequest !== requestIdRef.current) return
 
-        setSuggestions([])
         setHasSearched(true)
       } finally {
         if (currentRequest === requestIdRef.current) {
           setLoading(false)
         }
       }
-    }, DEBOUNCE_MS)
+    }, delay)
 
     return () => {
       controller.abort()

@@ -6,6 +6,7 @@ import { RecipeStepsEditor } from './components/RecipeStepsEditor'
 import { SavedRecipesPanel } from './components/SavedRecipesPanel'
 import { PersonalIngredientsPanel } from './components/PersonalIngredientsPanel'
 import { ThemeToggle } from './components/ThemeToggle'
+import { EditableNumberInput } from './components/EditableNumberInput'
 import { calculateIngredientCostSafe, calculateRecipeCost } from './services/costCalculator'
 import { countUniqueBrands } from './services/marketPrice'
 import {
@@ -624,11 +625,11 @@ function App() {
           </label>
           <label className="recipe-servings-field">
             <span>Porciones</span>
-            <input
-              type="number"
+            <EditableNumberInput
               min={1}
               value={servings}
-              onChange={(event) => setServings(Number(event.target.value) || 1)}
+              emptyFallback={1}
+              onValueChange={(next) => setServings(Math.max(1, next))}
             />
           </label>
           <div className="recipe-actions">

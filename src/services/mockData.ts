@@ -1,4 +1,5 @@
 import type { ProductPrice } from '../types'
+import { isFallbackMatch, isPrimaryMatch } from './ingredientSearch'
 
 const MOCK_CATALOG: ProductPrice[] = [
   { id: '1', name: 'Harina 0000', brand: 'Pureza', store: 'Carrefour', price: 1890, unit: 'kg', quantity: 1 },
@@ -25,31 +26,17 @@ const MOCK_CATALOG: ProductPrice[] = [
 ]
 
 export function searchMockProducts(query: string): ProductPrice[] {
-  const normalized = query.trim().toLowerCase()
-  if (!normalized) return []
+  const trimmed = query.trim()
+  if (!trimmed) return []
 
-  const tokens = normalized
-    .split(/\s+/)
-    .filter((token) => token && !['de', 'del', 'la', 'el'].includes(token))
+  const matches = MOCK_CATALOG.filter((product) => isFallbackMatch(product.name, trimmed))
+  const primary = matches
+    .filter((product) => isPrimaryMatch(product.name, trimmed))
+    .sort((left, right) => left.name.localeCompare(right.name, 'es'))
+  const primaryIds = new Set(primary.map((product) => product.id))
+  const rest = matches
+    .filter((product) => !primaryIds.has(product.id))
+    .sort((left, right) => left.name.localeCompare(right.name, 'es'))
 
-  const matches = MOCK_CATALOG.filter((product) => {
-    const normalizedName = product.name.toLowerCase()
-    const normalizedBrand = product.brand?.toLowerCase() ?? ''
-    const haystack = `${normalizedName} ${normalizedBrand}`
-
-    if (tokens.length >= 2) {
-      return tokens.every((token) => haystack.includes(token))
-    }
-
-    return (
-      haystack.includes(normalized) ||
-      (normalized.endsWith('s') && haystack.includes(normalized.slice(0, -1)))
-    )
-  })
-
-  return matches.sort((left, right) => {
-    const leftStarts = left.name.toLowerCase().startsWith(tokens[0] ?? normalized) ? 1 : 0
-    const rightStarts = right.name.toLowerCase().startsWith(tokens[0] ?? normalized) ? 1 : 0
-    return rightStarts - leftStarts
-  })
+  return [...primary, ...rest]
 }

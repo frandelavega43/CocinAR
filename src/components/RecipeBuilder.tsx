@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { DEFAULT_UNIT } from '../constants/units'
 import type { RecipeIngredient } from '../types'
 import { useEditableFieldValue } from '../hooks/useEditableFieldValue'
+import { EditableNumberInput } from './EditableNumberInput'
 import { IngredientAutocomplete, type IngredientSuggestion } from './IngredientAutocomplete'
 import { UnitSelect } from './UnitSelect'
 
@@ -370,15 +371,14 @@ export function RecipeBuilder({
                 </div>
 
                 <div className="ingredient-controls">
-                  <input
-                    type="number"
+                  <EditableNumberInput
                     min={0}
                     step="any"
                     value={ingredient.quantity}
+                    emptyFallback={0}
                     disabled={ingredient.status === 'loading'}
-                    onChange={(event) =>
-                      onQuantityChange(ingredient.id, Number(event.target.value) || 0)
-                    }
+                    onValueChange={(next) => onQuantityChange(ingredient.id, Math.max(0, next))}
+                    aria-label={`Cantidad de ${ingredient.name}`}
                   />
                   <UnitSelect
                     value={ingredient.unit}

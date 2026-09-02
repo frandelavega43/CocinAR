@@ -1,5 +1,6 @@
 import type { PersonalIngredient } from '../types'
 import type { IngredientSuggestion } from './api'
+import { isFallbackMatch, isPrimaryMatch } from './ingredientSearch'
 import { getPersonalIngredients } from './personalIngredientStorage'
 
 function normalizeText(value: string): string {
@@ -29,18 +30,16 @@ export function searchPersonalIngredientSuggestions(
   const normalized = normalizeText(query)
   if (normalized.length < 2) return []
 
-  return getPersonalIngredients()
-    .filter((item) => normalizeText(item.name).includes(normalized))
-    .sort((a, b) => {
-      const aName = normalizeText(a.name)
-      const bName = normalizeText(b.name)
-      const aStarts = aName.startsWith(normalized) ? 0 : 1
-      const bStarts = bName.startsWith(normalized) ? 0 : 1
-      if (aStarts !== bStarts) return aStarts - bStarts
-      return a.name.localeCompare(b.name, 'es')
-    })
-    .slice(0, limit)
-    .map(toSuggestion)
+  const matches = getPersonalIngredients().filter((item) => isFallbackMatch(item.name, query))
+  const primary = matches
+    .filter((item) => isPrimaryMatch(item.name, query))
+    .sort((a, b) => a.name.localeCompare(b.name, 'es'))
+  const primaryIds = new Set(primary.map((item) => item.id))
+  const rest = matches
+    .filter((item) => !primaryIds.has(item.id))
+    .sort((a, b) => a.name.localeCompare(b.name, 'es'))
+
+  return [...primary, ...rest].slice(0, limit).map(toSuggestion)
 }
 
 export function mergeIngredientSuggestions(
