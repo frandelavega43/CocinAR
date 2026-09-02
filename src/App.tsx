@@ -5,7 +5,7 @@ import { RecipeBuilder } from './components/RecipeBuilder'
 import { RecipeStepsEditor } from './components/RecipeStepsEditor'
 import { SavedRecipesPanel } from './components/SavedRecipesPanel'
 import { PersonalIngredientsPanel } from './components/PersonalIngredientsPanel'
-import { isUsingMockData } from './services/api'
+import { ThemeToggle } from './components/ThemeToggle'
 import { calculateIngredientCostSafe, calculateRecipeCost } from './services/costCalculator'
 import { countUniqueBrands } from './services/marketPrice'
 import {
@@ -567,18 +567,13 @@ function App() {
   const isUpdatingCost = isFetchingPrices || pendingCount > 0
 
   return (
-    <div className="app">
+    <>
+      <ThemeToggle />
+      <div className="app">
       <header className="hero">
         <div>
           <p className="eyebrow">Calculadora de costos</p>
           <h1>CocinaAR</h1>
-        </div>
-        <div className="hero-actions">
-          {isUsingMockData() ? (
-            <span className="badge">Modo demo · datos de ejemplo</span>
-          ) : (
-            <span className="badge">Precio promedio de mercado</span>
-          )}
         </div>
       </header>
 
@@ -698,6 +693,7 @@ function App() {
         </main>
       )}
     </div>
+    </>
   )
 }
 

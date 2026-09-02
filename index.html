@@ -9,6 +9,20 @@
     />
     <meta name="theme-color" content="#f6f1ea" />
     <title>CocinaAR</title>
+    <script>
+      ;(function () {
+        var stored = localStorage.getItem('cocinaar-theme')
+        var theme =
+          stored === 'dark' || stored === 'light'
+            ? stored
+            : window.matchMedia('(prefers-color-scheme: dark)').matches
+              ? 'dark'
+              : 'light'
+        document.documentElement.dataset.theme = theme
+        var meta = document.querySelector('meta[name="theme-color"]')
+        if (meta) meta.setAttribute('content', theme === 'dark' ? '#1a1612' : '#f6f1ea')
+      })()
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
