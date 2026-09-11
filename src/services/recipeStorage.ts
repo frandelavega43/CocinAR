@@ -123,5 +123,6 @@ export function toSavedIngredients(
     unit: ingredient.unit,
     isManual: ingredient.isManual,
     manualUnitPrice: ingredient.manualUnitPrice,
+    priceSource: ingredient.priceSource,
   }))
 }

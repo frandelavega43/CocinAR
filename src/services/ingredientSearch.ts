@@ -17,14 +17,55 @@ const INGREDIENT_ALIASES: Record<string, string[]> = {
   ],
   dulce: ['dulce de leche'],
   ddl: ['dulce de leche'],
-  papas: ['papa'],
-  tomates: ['tomate'],
-  cebollas: ['cebolla'],
+  papas: ['papa', 'papa blanca', 'papa lavada'],
+  papa: ['papa blanca', 'papa lavada'],
+  tomates: ['tomate', 'tomate redondo', 'tomate perita'],
+  tomate: ['tomate redondo', 'tomate perita'],
+  cebollas: ['cebolla blanca', 'cebolla'],
+  cebolla: ['cebolla blanca'],
   zanahorias: ['zanahoria'],
   bananas: ['banana'],
   manzanas: ['manzana'],
   limones: ['limon'],
-  morrones: ['morrón', 'morron'],
+  morrones: ['morron', 'pimiento', 'morrón'],
+  morron: ['pimiento', 'morrón'],
+  'morrón': ['pimiento', 'morron'],
+  lechuga: ['lechuga crespa', 'lechuga mantecosa'],
+  ajo: ['ajo colorado'],
+  zapallo: ['zapallo anco', 'zapallo coreano'],
+  batata: ['batata'],
+  acelga: ['acelga'],
+  espinaca: ['espinaca'],
+  perejil: ['perejil'],
+  choclo: ['choclo'],
+  berenjena: ['berenjena'],
+  brocoli: ['brocoli', 'brócoli'],
+  'brócoli': ['brocoli'],
+  coliflor: ['coliflor'],
+  remolacha: ['remolacha'],
+  rucula: ['rucula', 'rúcula'],
+  'rúcula': ['rucula'],
+  carne: [
+    'carne picada',
+    'carne vacuna',
+    'nalga',
+    'vacio',
+    'vacío',
+    'asado',
+    'bife',
+    'cuadril',
+    'paleta vacuna',
+  ],
+  'carne picada': ['carne picada vacuna', 'picada especial'],
+  nalga: ['nalga'],
+  vacio: ['vacio', 'vacío'],
+  'vacío': ['vacio'],
+  asado: ['asado de tira', 'costilla'],
+  bife: ['bife de chorizo', 'bife angosto'],
+  pollo: ['pollo entero', 'suprema de pollo', 'pechuga de pollo', 'pata muslo'],
+  pechuga: ['pechuga de pollo', 'suprema'],
+  cerdo: ['bondiola', 'costilla de cerdo', 'carré de cerdo'],
+  bondiola: ['bondiola de cerdo'],
   aceite: ['aceite de girasol', 'aceite girasol'],
   manteca: ['manteca'],
   harina: ['harina 0000', 'harina 000'],
@@ -95,6 +136,55 @@ const EXCLUDED_PRODUCT_KEYWORDS: Record<string, string[]> = {
     'cabello',
     'pelo',
   ],
+  carne: ['empanada', 'ravioles', 'raviol', 'salsa', 'hamburguesa', 'snack', 'alimento para'],
+  'carne picada': ['empanada', 'ravioles', 'salsa'],
+  pollo: ['caldo', 'sopas', 'sopa', 'nugget', 'medallon', 'empanada', 'alimento para'],
+  pechuga: ['caldo', 'sopa'],
+  cerdo: ['chorizo', 'fiambre', 'salame'],
+  tomate: ['salsa', 'ketchup', 'pure', 'puré', 'extracto', 'concentrado', 'fideo'],
+  tomates: ['salsa', 'ketchup', 'pure', 'puré', 'extracto', 'concentrado'],
+  papa: ['snack', 'frita', 'chips', 'pure', 'puré'],
+  papas: ['snack', 'frita', 'chips', 'pure', 'puré'],
+  cebolla: [
+    'snack',
+    'deshidratad',
+    'polvo',
+    'escamas',
+    'ahumada',
+    'hamburguesa',
+    'fritas',
+    'grisine',
+    'mani',
+    'maní',
+    'medallon',
+    'medallón',
+    'milanesa',
+    'ciriola',
+    'pringles',
+    'krachitos',
+    'caramelizada',
+  ],
+  cebollas: [
+    'snack',
+    'deshidratad',
+    'polvo',
+    'escamas',
+    'ahumada',
+    'hamburguesa',
+    'fritas',
+    'grisine',
+    'mani',
+    'maní',
+    'medallon',
+    'medallón',
+    'milanesa',
+    'ciriola',
+    'pringles',
+    'krachitos',
+    'caramelizada',
+  ],
+  banana: ['snack', 'chips', 'dulce'],
+  manzana: ['jugo', 'sidra', 'compota'],
 }
 
 const SEARCH_STOP_WORDS = new Set(['de', 'del', 'la', 'el', 'los', 'las', 'y', 'con'])
@@ -373,6 +463,8 @@ function productRelevanceScore(productName: string, query: string): number {
   const queryFirst = getSignificantTokens(query)[0] ?? getFirstWord(query)
   const productFirst = getFirstWord(productName)
   const words = getWords(productName)
+  const normalizedName = normalizeText(productName)
+  const normalizedQuery = normalizeText(query)
 
   let score = 0
 
@@ -398,7 +490,56 @@ function productRelevanceScore(productName: string, query: string): number {
     score += 20
   }
 
+  // Variedad base (blanca/común) arriba; especialidades abajo si no las pediste.
+  score += varietyPreferenceScore(normalizedName, normalizedQuery, words, queryFirst)
+
   return score
+}
+
+/** Si buscás "cebolla", priorizar blanca/genérica y no morada/cherry/etc. */
+const SPECIALTY_VARIETIES = [
+  'morada',
+  'morado',
+  'roja',
+  'rojo',
+  'colorada',
+  'colorado',
+  'cherry',
+  'perita',
+  'violeta',
+  'dulce',
+  'platense',
+  'chalota',
+  'verdeo',
+]
+
+function varietyPreferenceScore(
+  normalizedName: string,
+  normalizedQuery: string,
+  words: string[],
+  queryFirst: string,
+): number {
+  const queryAsksSpecialty = SPECIALTY_VARIETIES.some((variety) =>
+    normalizedQuery.includes(variety),
+  )
+
+  if (!queryAsksSpecialty) {
+    for (const variety of SPECIALTY_VARIETIES) {
+      if (normalizedName.includes(variety)) return -150
+    }
+  }
+
+  let bonus = 0
+  if (normalizedName.includes('blanca') || normalizedName.includes('blanco')) {
+    bonus += 90
+  }
+
+  // Nombre corto tipo "Cebolla" / "Cebolla blanca" gana a marcas raras.
+  if (queryFirst && words[0] === queryFirst && words.length <= 3) {
+    bonus += 50
+  }
+
+  return bonus
 }
 
 function sortProductsByRelevance(
@@ -428,18 +569,12 @@ function pickRankedProducts(
     query,
   )
 
-  if (primary.length >= limit) {
+  // Si hay matches de primera palabra, no mezclar snacks/elaborados del resto.
+  if (primary.length > 0) {
     return primary.slice(0, limit)
   }
 
-  // Primero los de primera palabra; si faltan, completar con el resto.
-  const primaryIds = new Set(primary.map((product) => product.id))
-  const rest = sortProductsByRelevance(
-    relevant.filter((product) => !primaryIds.has(product.id)),
-    query,
-  )
-
-  return [...primary, ...rest].slice(0, limit)
+  return sortProductsByRelevance(relevant, query).slice(0, limit)
 }
 
 function isAvailableProduct(product: PreciosClarosProductoResumen): boolean {

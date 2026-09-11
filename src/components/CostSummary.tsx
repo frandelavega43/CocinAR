@@ -11,7 +11,7 @@ export function CostSummary({ breakdown }: CostSummaryProps) {
     <section className="panel summary-panel">
       <div className="panel-header">
         <h2>Costo estimado</h2>
-        <p>Promedio de precios entre marcas de supermercado.</p>
+          <p>Detalle por ingrediente según la fuente de cada precio.</p>
       </div>
 
       <div className="summary-total">

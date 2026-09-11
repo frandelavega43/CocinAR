@@ -1,3 +1,4 @@
+import { forwardRef } from 'react'
 import { DEFAULT_UNIT, UNIT_OPTIONS } from '../constants/units'
 
 interface UnitSelectProps {
@@ -8,23 +9,26 @@ interface UnitSelectProps {
   onBlur?: () => void
 }
 
-export function UnitSelect({ name, value, disabled, onChange, onBlur }: UnitSelectProps) {
-  const selected = value ?? DEFAULT_UNIT
+export const UnitSelect = forwardRef<HTMLSelectElement, UnitSelectProps>(
+  function UnitSelect({ name, value, disabled, onChange, onBlur }, ref) {
+    const selected = value ?? DEFAULT_UNIT
 
-  return (
-    <select
-      name={name}
-      className="unit-select"
-      value={selected}
-      disabled={disabled}
-      onChange={(event) => onChange?.(event.target.value)}
-      onBlur={onBlur}
-    >
-      {UNIT_OPTIONS.map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </select>
-  )
-}
+    return (
+      <select
+        ref={ref}
+        name={name}
+        className="unit-select"
+        value={selected}
+        disabled={disabled}
+        onChange={(event) => onChange?.(event.target.value)}
+        onBlur={onBlur}
+      >
+        {UNIT_OPTIONS.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    )
+  },
+)

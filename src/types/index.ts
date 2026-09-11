@@ -8,6 +8,19 @@ export interface ProductPrice {
   quantity: number
 }
 
+export type PriceSource = 'sepa' | 'mercado-central' | 'manual'
+
+export interface MercadoCentralItem {
+  id: string
+  name: string
+  unit: 'kg'
+  wholesalePricePerKg: number
+  retailPricePerKg: number
+  updatedAt: string
+  source: 'mercado-central'
+  category: 'hortaliza' | 'fruta'
+}
+
 export interface RecipeIngredient {
   id: string
   name: string
@@ -24,6 +37,7 @@ export interface RecipeIngredient {
   priceFetchedAt?: string
   isManual?: boolean
   manualUnitPrice?: number
+  priceSource?: PriceSource
 }
 
 export interface SavedIngredientItem {
@@ -35,6 +49,7 @@ export interface SavedIngredientItem {
   unit: string
   isManual?: boolean
   manualUnitPrice?: number
+  priceSource?: PriceSource
 }
 
 export interface SavedRecipe {

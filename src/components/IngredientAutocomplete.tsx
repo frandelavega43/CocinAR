@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState, type RefObject } from 'react'
 import {
   peekIngredientSuggestions,
   searchIngredientSuggestions,
@@ -15,6 +15,8 @@ interface IngredientAutocompleteProps {
   value: string
   onChange?: (value: string) => void
   onSelect?: (suggestion: IngredientSuggestion, searchQuery: string) => void
+  /** Se llama después de elegir una sugerencia (útil para mover el foco). */
+  onAfterSelect?: () => void
   onFocus?: () => void
   onBlur?: () => void
   name?: string
@@ -22,6 +24,7 @@ interface IngredientAutocompleteProps {
   disabled?: boolean
   required?: boolean
   className?: string
+  inputRef?: RefObject<HTMLInputElement | null>
   /** En ingredientes ya cargados: no buscar ni mostrar sugerencias hasta que el usuario escriba. */
   onlySearchWhileTyping?: boolean
 }
@@ -30,6 +33,7 @@ export function IngredientAutocomplete({
   value,
   onChange,
   onSelect,
+  onAfterSelect,
   onFocus,
   onBlur,
   name,
@@ -37,11 +41,13 @@ export function IngredientAutocomplete({
   disabled,
   required,
   className,
+  inputRef: inputRefProp,
   onlySearchWhileTyping = false,
 }: IngredientAutocompleteProps) {
   const listId = useId()
   const containerRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const localInputRef = useRef<HTMLInputElement>(null)
+  const inputRef = inputRefProp ?? localInputRef
   const requestIdRef = useRef(0)
   const draftRef = useRef(value)
   const isFocusedRef = useRef(false)
@@ -53,7 +59,19 @@ export function IngredientAutocomplete({
   const [hasSearched, setHasSearched] = useState(false)
   const [isTyping, setIsTyping] = useState(false)
 
+  const skipNextSearchRef = useRef(false)
+
   useEffect(() => {
+    if (value === '') {
+      draftRef.current = ''
+      setSearchTerm('')
+      setIsTyping(false)
+      if (inputRef.current) {
+        inputRef.current.value = ''
+      }
+      return
+    }
+
     if (isFocusedRef.current) return
 
     draftRef.current = value
@@ -65,6 +83,15 @@ export function IngredientAutocomplete({
   }, [value])
 
   useEffect(() => {
+    if (skipNextSearchRef.current) {
+      skipNextSearchRef.current = false
+      setOpen(false)
+      setSuggestions([])
+      setLoading(false)
+      setHasSearched(false)
+      return
+    }
+
     const trimmed = searchTerm.trim()
     const shouldSearch = !onlySearchWhileTyping || isTyping
 
@@ -149,38 +176,58 @@ export function IngredientAutocomplete({
   function pickSuggestion(suggestion: IngredientSuggestion) {
     const searchQuery = draftRef.current.trim()
     draftRef.current = suggestion.name
+    skipNextSearchRef.current = true
     setSearchTerm(suggestion.name)
     if (inputRef.current) {
       inputRef.current.value = suggestion.name
     }
-    onChange?.(suggestion.name)
+    // No llamar onChange acá: en el padre limpia precio manual/fresco.
+    // onSelect es quien aplica nombre + precio sticky.
     onSelect?.(suggestion, searchQuery)
     setIsTyping(false)
     setOpen(false)
     setSuggestions([])
     setHasSearched(false)
+    window.requestAnimationFrame(() => {
+      onAfterSelect?.()
+    })
   }
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
-    if (!open) return
+    if (event.key === 'Escape' && open) {
+      event.preventDefault()
+      setOpen(false)
+      return
+    }
 
-    if (event.key === 'ArrowDown' && suggestions.length > 0) {
+    if (event.key === 'ArrowDown' && open && suggestions.length > 0) {
       event.preventDefault()
       setActiveIndex((current) => (current + 1) % suggestions.length)
+      return
     }
 
-    if (event.key === 'ArrowUp' && suggestions.length > 0) {
+    if (event.key === 'ArrowUp' && open && suggestions.length > 0) {
       event.preventDefault()
       setActiveIndex((current) => (current <= 0 ? suggestions.length - 1 : current - 1))
+      return
     }
 
-    if (event.key === 'Enter' && activeIndex >= 0 && suggestions.length > 0) {
-      event.preventDefault()
-      pickSuggestion(suggestions[activeIndex])
-    }
+    if (event.key === 'Enter') {
+      if (open && suggestions.length > 0 && activeIndex >= 0) {
+        event.preventDefault()
+        pickSuggestion(suggestions[activeIndex])
+        return
+      }
 
-    if (event.key === 'Escape') {
-      setOpen(false)
+      // Sin ítem resaltado: no forzar la 1ª sugerencia (rompe carne a granel / texto libre).
+      // Si ya hay nombre, pasar al siguiente campo.
+      if (draftRef.current.trim()) {
+        event.preventDefault()
+        setOpen(false)
+        window.requestAnimationFrame(() => {
+          onAfterSelect?.()
+        })
+      }
     }
   }
 
@@ -256,6 +303,7 @@ export function IngredientAutocomplete({
                 className={[
                   index === activeIndex ? 'active' : '',
                   suggestion.isPersonal ? 'personal' : '',
+                  suggestion.isFreshReference ? 'fresh' : '',
                 ]
                   .filter(Boolean)
                   .join(' ') || undefined}
@@ -273,7 +321,19 @@ export function IngredientAutocomplete({
                       ]
                         .filter(Boolean)
                         .join(' · ')
-                    : [
+                    : suggestion.isFreshReference
+                      ? [
+                          'Mercado Central',
+                          suggestion.priceMin
+                            ? `~$${suggestion.priceMin.toLocaleString('es-AR', {
+                                maximumFractionDigits: 0,
+                              })} / ${suggestion.suggestedUnit ?? 'kg'}`
+                            : null,
+                          'estimado verdulería',
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')
+                      : [
                         suggestion.brand,
                         suggestion.presentacion,
                         suggestion.priceMin

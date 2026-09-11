@@ -104,8 +104,11 @@ export function SavedRecipesPanel({
               >
                 <strong>{recipe.name}</strong>
                 <span>
-                  {recipe.ingredients.length} ingrediente
-                  {recipe.ingredients.length === 1 ? '' : 's'} · {recipe.servings} porciones
+                  {`${recipe.ingredients.length} ingrediente${
+                    recipe.ingredients.length === 1 ? '' : 's'
+                  } · ${recipe.servings} porción${
+                    recipe.servings === 1 ? '' : 'es'
+                  }`}
                 </span>
                 <span className="saved-recipe-date">Actualizada {formatDate(recipe.updatedAt)}</span>
               </button>

@@ -14,20 +14,37 @@ export function createManualIngredient(
   unit: string,
   totalPrice: number,
   existingId?: string,
+  options?: { priceSource?: 'manual' | 'mercado-central' },
 ): RecipeIngredient {
   const manualUnitPrice = quantity > 0 ? totalPrice / quantity : 0
+  const priceSource = options?.priceSource ?? 'manual'
+  const isFresh = priceSource === 'mercado-central'
 
   return {
     id: existingId ?? crypto.randomUUID(),
     name,
     quantity,
     unit,
-    isManual: true,
+    isManual: !isFresh,
     manualUnitPrice,
     averageUnitPrice: manualUnitPrice,
-    matchedPrices: [],
+    matchedPrices: isFresh
+      ? [
+          {
+            id: existingId ?? `mc-ref-${name}`,
+            name,
+            brand: 'Mercado Central',
+            store: 'Referencia frescos',
+            price: manualUnitPrice,
+            unit,
+            quantity: 1,
+          },
+        ]
+      : [],
     lineCost: totalPrice,
     status: 'ready',
+    brandCount: isFresh ? 1 : undefined,
+    priceSource,
   }
 }
 
@@ -38,6 +55,7 @@ export function recalculateManualIngredient(
 ): RecipeIngredient {
   const manualUnitPrice = ingredient.manualUnitPrice ?? 0
   const lineCost = manualUnitPrice * quantity
+  const isFresh = ingredient.priceSource === 'mercado-central'
 
   return {
     ...ingredient,
@@ -46,6 +64,21 @@ export function recalculateManualIngredient(
     averageUnitPrice: manualUnitPrice,
     lineCost,
     status: 'ready',
+    isManual: !isFresh,
+    priceSource: ingredient.priceSource ?? 'manual',
+    matchedPrices: isFresh
+      ? [
+          {
+            id: ingredient.id,
+            name: ingredient.name,
+            brand: 'Mercado Central',
+            store: 'Referencia frescos',
+            price: manualUnitPrice,
+            unit,
+            quantity: 1,
+          },
+        ]
+      : ingredient.matchedPrices,
   }
 }
 
@@ -56,23 +89,20 @@ export function restoreManualIngredient(
     quantity: number
     unit: string
     manualUnitPrice?: number
+    priceSource?: 'manual' | 'mercado-central' | 'sepa'
   },
 ): RecipeIngredient {
-  const manualUnitPrice = item.manualUnitPrice ?? 0
-  const lineCost = manualUnitPrice * item.quantity
-
-  return {
-    id: item.id,
-    name: item.name,
-    quantity: item.quantity,
-    unit: item.unit,
-    isManual: true,
-    manualUnitPrice,
-    averageUnitPrice: manualUnitPrice,
-    matchedPrices: [],
-    lineCost,
-    status: 'ready',
-  }
+  const priceSource =
+    item.priceSource === 'mercado-central' ? 'mercado-central' : 'manual'
+  const totalPrice = (item.manualUnitPrice ?? 0) * item.quantity
+  return createManualIngredient(
+    item.name,
+    item.quantity,
+    item.unit,
+    totalPrice,
+    item.id,
+    { priceSource },
+  )
 }
 
 export function createPendingIngredient(
@@ -115,7 +145,8 @@ function buildReadyIngredient(
       matchedPrices: [],
       lineCost: 0,
       status: 'error',
-      errorMessage: 'No se encontraron precios para este ingrediente.',
+      errorMessage:
+        'No se encontraron precios. Probá Precio manual: carne y verdura a granel suelen no estar en supermercados.',
     }
   }
 
@@ -136,6 +167,10 @@ function buildReadyIngredient(
     }
   }
 
+  const fromMercadoCentral = rawPrices.some((price) =>
+    price.brand?.toLowerCase().includes('mercado central'),
+  )
+
   return {
     ...calculated.ingredient,
     name,
@@ -143,6 +178,7 @@ function buildReadyIngredient(
     status: 'ready',
     brandCount: countUniqueBrands(calculated.ingredient.matchedPrices),
     priceFetchedAt: fetchedAt,
+    priceSource: fromMercadoCentral ? 'mercado-central' : 'sepa',
   }
 }
 
@@ -234,7 +270,8 @@ export async function fetchPricesForIngredients(
         matchedPrices: [],
         lineCost: 0,
         status: 'error',
-        errorMessage: 'No encontramos precios para ese ingrediente en supermercados.',
+        errorMessage:
+          'No encontramos precios en supermercados. Para carne/verdura a granel usá Precio manual o Mis ingredientes.',
       }
     }
 

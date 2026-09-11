@@ -1,5 +1,10 @@
 import type { ProductPrice } from '../types'
 import { searchIngredientProducts, isRelevantProduct, isCompoundIngredientQuery } from './ingredientSearch'
+import {
+  fetchMercadoCentralItems,
+  isLikelyFreshProduce,
+  mercadoCentralToProductPrices,
+} from './mercadoCentralClient'
 import { parseProductPresentation } from './presentationParser'
 import { normalizeUnit } from './unitConverter'
 import type { PreciosClarosAgrupable } from './preciosClaros/types'
@@ -27,6 +32,27 @@ function inferDefaultUnit(query: string): string {
     normalized.includes('tomate') ||
     normalized.includes('cebolla') ||
     normalized.includes('zanahoria') ||
+    normalized.includes('lechuga') ||
+    normalized.includes('ajo') ||
+    normalized.includes('zapallo') ||
+    normalized.includes('batata') ||
+    normalized.includes('morr') ||
+    normalized.includes('pimiento') ||
+    normalized.includes('acelga') ||
+    normalized.includes('espinaca') ||
+    normalized.includes('banana') ||
+    normalized.includes('manzana') ||
+    normalized.includes('limon') ||
+    normalized.includes('limón') ||
+    normalized.includes('carne') ||
+    normalized.includes('pollo') ||
+    normalized.includes('cerdo') ||
+    normalized.includes('nalga') ||
+    normalized.includes('vacio') ||
+    normalized.includes('vacío') ||
+    normalized.includes('asado') ||
+    normalized.includes('pechuga') ||
+    normalized.includes('bondiola') ||
     normalized.includes('harina') ||
     normalized.includes('azucar') ||
     normalized.includes('azúcar') ||
@@ -99,5 +125,19 @@ export async function fetchMarketPrices(query: string): Promise<ProductPrice[]> 
     return mapped
   }
 
-  return mapAgrupablesToPrices(agrupables, trimmed)
+  const fromAgrupables = mapAgrupablesToPrices(agrupables, trimmed)
+  if (fromAgrupables.length > 0) {
+    return fromAgrupables
+  }
+
+  if (isLikelyFreshProduce(trimmed)) {
+    try {
+      const fresh = await fetchMercadoCentralItems(trimmed, 8)
+      return mercadoCentralToProductPrices(fresh)
+    } catch {
+      return []
+    }
+  }
+
+  return []
 }

@@ -8,6 +8,12 @@ import {
   mergeIngredientSuggestions,
   searchPersonalIngredientSuggestions,
 } from './personalIngredientSearch'
+import {
+  fetchMercadoCentralItems,
+  isLikelyFreshProduce,
+  mercadoCentralToProductPrices,
+  mercadoCentralToSuggestions,
+} from './mercadoCentralClient'
 
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 
@@ -55,8 +61,10 @@ export interface IngredientSuggestion {
   storeCount?: number
   suggestedUnit?: string
   isPersonal?: boolean
+  isFreshReference?: boolean
   personalIngredientId?: string
   manualUnitPrice?: number
+  priceSource?: 'sepa' | 'mercado-central' | 'manual'
 }
 
 export function isUsingMockData(): boolean {
@@ -65,7 +73,19 @@ export function isUsingMockData(): boolean {
 
 async function fetchIngredientPrices(name: string): Promise<ProductPrice[]> {
   if (isUsingMockData()) {
-    return searchMockProducts(name)
+    const mock = searchMockProducts(name)
+    if (mock.length > 0) return mock
+
+    if (isLikelyFreshProduce(name)) {
+      try {
+        const fresh = await fetchMercadoCentralItems(name, 8)
+        return mercadoCentralToProductPrices(fresh)
+      } catch {
+        return []
+      }
+    }
+
+    return []
   }
 
   return fetchMarketPrices(name)
@@ -144,9 +164,21 @@ export async function searchIngredientSuggestions(
     priceMin: product.precioMin,
     storeCount: product.cantSucursalesDisponible,
     suggestedUnit: parseProductPresentation(product.presentacion, product.nombre).unit,
+    priceSource: 'sepa' as const,
   }))
 
-  const merged = mergeIngredientSuggestions(personal, apiResults, limit)
+  let fresh: IngredientSuggestion[] = []
+  if (isLikelyFreshProduce(trimmed)) {
+    try {
+      const items = await fetchMercadoCentralItems(trimmed, 8, signal)
+      fresh = mercadoCentralToSuggestions(items)
+    } catch {
+      fresh = []
+    }
+  }
+
+  // Frescos del Mercado Central primero (después de propios), luego supermercado.
+  const merged = mergeIngredientSuggestions(personal, [...fresh, ...apiResults], limit)
   setCachedSuggestions(cacheKey, merged)
   return merged
 }

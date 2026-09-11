@@ -66,6 +66,7 @@ function toSavedRecipe(
         unit: ingredient.unit,
         isManual: ingredient.isManual,
         manualUnitPrice: ingredient.manualUnitPrice,
+        priceSource: ingredient.priceSource,
       })),
     ),
     updatedAt: new Date().toISOString(),
@@ -168,7 +169,11 @@ function App() {
     setLastActiveRecipeId(recipe.id)
 
     const restored = recipe.ingredients.map((ingredient) => {
-      if (ingredient.isManual) {
+      if (
+        ingredient.isManual ||
+        ingredient.priceSource === 'mercado-central' ||
+        ingredient.priceSource === 'manual'
+      ) {
         return restoreManualIngredient(ingredient)
       }
 
@@ -288,17 +293,20 @@ function App() {
     unit: string,
     searchQuery?: string,
     manualTotalPrice?: number,
+    priceSource: 'manual' | 'mercado-central' = 'manual',
   ) {
     const id = crypto.randomUUID()
 
     if (manualTotalPrice !== undefined) {
       setIngredients((current) => [
         ...current,
-        createManualIngredient(name, quantity, unit, manualTotalPrice, id),
+        createManualIngredient(name, quantity, unit, manualTotalPrice, id, { priceSource }),
       ])
-      setPersonalIngredients(
-        upsertPersonalIngredientFromManual(name, unit, manualTotalPrice, quantity),
-      )
+      if (priceSource === 'manual') {
+        setPersonalIngredients(
+          upsertPersonalIngredientFromManual(name, unit, manualTotalPrice, quantity),
+        )
+      }
       return
     }
 
@@ -322,7 +330,7 @@ function App() {
       current.map((ingredient) => {
         if (ingredient.id !== id) return ingredient
 
-        if (ingredient.isManual) {
+        if (ingredient.isManual || ingredient.priceSource === 'mercado-central') {
           return recalculateManualIngredient(ingredient, quantity, ingredient.unit)
         }
 
@@ -364,7 +372,7 @@ function App() {
       current.map((ingredient) => {
         if (ingredient.id !== id) return ingredient
 
-        if (ingredient.isManual) {
+        if (ingredient.isManual || ingredient.priceSource === 'mercado-central') {
           return recalculateManualIngredient(ingredient, ingredient.quantity, unit)
         }
 

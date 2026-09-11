@@ -395,6 +395,22 @@ textarea {
   color: var(--accent-dark);
 }
 
+.autocomplete-list button.fresh {
+  background: var(--warning-surface);
+}
+
+.autocomplete-list button.fresh:hover,
+.autocomplete-list button.fresh.active {
+  border-color: var(--success);
+}
+
+.autocomplete-list button.fresh strong::after {
+  content: ' · Fresco';
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--success-text);
+}
+
 .recipe-title-bar {
   display: grid;
   gap: 1rem;
@@ -597,19 +613,24 @@ textarea {
   grid-template-columns: 1.4fr 0.7fr 0.7fr auto;
   gap: 0.65rem;
   margin-top: 0;
+  align-items: end;
 }
 
 .add-ingredient-section {
   position: relative;
-  margin-top: 1rem;
+  margin-top: 0.85rem;
   display: grid;
+  padding: 1rem;
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+  background: var(--surface-elevated);
 }
 
 .ingredient-mode-switch {
   display: inline-flex;
   gap: 0.35rem;
-  justify-self: end;
-  margin-bottom: 0.85rem;
+  flex-shrink: 0;
+  margin: 0;
   padding: 0.3rem;
   border-radius: 0.9rem;
   background: var(--surface-muted);
@@ -640,11 +661,15 @@ textarea {
   color: white;
 }
 
-.add-ingredient-section--manual .add-ingredient-form {
-  padding: 1rem;
-  border-radius: 1rem;
-  border: 1px dashed var(--border);
+.add-ingredient-section--manual {
+  border-style: dashed;
   background: linear-gradient(180deg, var(--manual-form-gradient) 0%, var(--surface-muted) 100%);
+}
+
+.add-ingredient-section--manual .add-ingredient-form {
+  padding: 0;
+  border: none;
+  background: transparent;
 }
 
 .manual-ingredient-toggle {
@@ -683,18 +708,25 @@ textarea {
   color: var(--accent-dark);
 }
 
-.add-ingredient-form label {
+.ingredient-status--fresh {
+  color: var(--success-text);
+}
+
+.add-ingredient-form label,
+.add-ingredient-form__field {
   display: grid;
   gap: 0.35rem;
 }
 
-.add-ingredient-form span {
+.add-ingredient-form span,
+.add-ingredient-form__field > span {
   font-size: 0.82rem;
   color: var(--text-muted);
   font-weight: 500;
 }
 
-.add-ingredient-form button {
+.add-ingredient-form button,
+.add-ingredient-form__submit {
   align-self: end;
 }
 
@@ -733,6 +765,21 @@ textarea {
   justify-content: space-between;
   gap: 1rem;
   align-items: flex-start;
+}
+
+@media (max-width: 720px) {
+  .panel-header-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .panel-header-row .ingredient-mode-switch {
+    width: 100%;
+  }
+
+  .panel-header-row .ingredient-mode-switch__option {
+    flex: 1;
+  }
 }
 
 .recipe-actions {
@@ -942,7 +989,7 @@ textarea {
   border-radius: 0.85rem;
   background: var(--surface);
   box-shadow: var(--shadow);
-  max-height: 220px;
+  max-height: 280px;
   overflow: auto;
 }
 
@@ -1162,7 +1209,6 @@ html[data-theme='dark'] .ingredient-controls .unit-select {
 }
 
 .search-results li + li,
-.ingredient-list li + li,
 .summary-breakdown li + li {
   margin-top: 0.65rem;
 }
@@ -1236,41 +1282,78 @@ html[data-theme='dark'] .ingredient-controls .unit-select {
   word-break: break-word;
 }
 
+.ingredient-list {
+  list-style: none;
+  margin: 1.1rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.65rem;
+}
+
 .ingredient-row {
   display: grid;
   gap: 0.75rem;
-  padding: 1rem;
+  padding: 0.95rem 1rem;
   border-radius: 1rem;
   background: var(--surface-muted);
   border: 1px solid var(--border);
 }
 
-.ingredient-info span {
+@media (min-width: 720px) {
+  .ingredient-row {
+    grid-template-columns: minmax(0, 1.4fr) minmax(12rem, 0.9fr) auto;
+    align-items: center;
+    gap: 0.85rem;
+  }
+
+  .ingredient-cost {
+    justify-self: end;
+    text-align: right;
+    min-width: 5.5rem;
+  }
+}
+
+.ingredient-info span,
+.ingredient-status {
   display: block;
   color: var(--text-muted);
-  font-size: 0.88rem;
-  margin-top: 0.2rem;
+  font-size: 0.84rem;
+  margin-top: 0.25rem;
+  line-height: 1.35;
 }
 
 .ingredient-controls {
   display: grid;
   grid-template-columns: 1fr 1fr auto;
   gap: 0.5rem;
+  align-items: center;
 }
 
-.ingredient-controls button {
-  border: none;
+.ingredient-controls button,
+.ingredient-remove {
+  border: 1px solid var(--border);
   border-radius: 0.85rem;
-  padding: 0 0.9rem;
-  background: var(--surface-muted);
-  color: var(--accent-dark);
+  padding: 0 0.85rem;
+  min-height: 2.75rem;
+  background: var(--surface);
+  color: var(--text-muted);
   cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 600;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.ingredient-remove:hover {
+  background: var(--danger-bg);
+  border-color: transparent;
+  color: var(--danger);
 }
 
 .ingredient-cost {
-  font-size: 1.2rem;
+  font-size: 1.15rem;
   font-weight: 700;
   color: var(--success);
+  letter-spacing: -0.02em;
 }
 
 .summary-total,
@@ -1319,7 +1402,6 @@ html[data-theme='dark'] .ingredient-controls .unit-select {
   }
 
   .ingredient-mode-switch {
-    justify-self: stretch;
     width: 100%;
   }
 
@@ -1328,7 +1410,6 @@ html[data-theme='dark'] .ingredient-controls .unit-select {
     padding-inline: 0.55rem;
   }
 
-  .add-ingredient-section--manual .add-ingredient-form,
   .add-ingredient-form--personal {
     padding: 0.85rem;
   }
