@@ -582,7 +582,7 @@ function App() {
       <header className="hero">
         <div>
           <p className="eyebrow">Calculadora de costos</p>
-          <h1>CocinaAR</h1>
+          <h1>CocinAR</h1>
         </div>
       </header>
 
